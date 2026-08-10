@@ -10,4 +10,6 @@ type YtdlpConfig struct {
 	// Recode is the target video container yt-dlp recodes into (e.g. mp4).
 	// Empty disables recoding.
 	Recode string `toml:"recode" mapstructure:"recode" json:"recode"`
+	// Cookies points to a Netscape cookies.txt file for sites that require login.
+	Cookies string `toml:"cookies" mapstructure:"cookies" json:"cookies"`
 }

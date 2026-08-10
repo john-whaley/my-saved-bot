@@ -155,6 +155,7 @@ func Init(ctx context.Context, configFile ...string) error {
 
 		// yt-dlp
 		"ytdlp.recode": "mp4",
+		"ytdlp.cookies": "",
 	}
 
 	for key, value := range defaultConfigs {

@@ -55,6 +55,8 @@ max_height = 1080
 format = ""
 # 下载后转封装的视频容器格式, 留空则不转封装. 默认 mp4
 recode = "mp4"
+# yt-dlp cookies.txt 路径, 用于 YouTube 等需要登录验证的网站. 留空则不使用
+cookies = ""
 
 # HTTP API 配置
 [api]

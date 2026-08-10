@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/log"
+	"github.com/duke-git/lancet/v2/slice"
 	ytdlp "github.com/lrstanley/go-ytdlp"
 
 	"github.com/krau/SaveAny-Bot/config"
@@ -97,12 +98,8 @@ func (t *Task) downloadFiles(ctx context.Context, tempDir string) ([]string, err
 		t.Progress.OnProgress(ctx, t, "Downloading...")
 	}
 
-	// Execute download with URLs and custom flags
-	logger.Infof("Executing yt-dlp for %d URL(s) with %d custom flag(s)", len(t.URLs), len(t.Flags))
-
-	// Combine flags and URLs as arguments (flags first, then URLs)
-	// yt-dlp accepts: yt-dlp [OPTIONS] URL [URL...]
-	args := append(t.Flags, t.URLs...)
+	args := t.buildArgs(config.C().Ytdlp)
+	logger.Infof("Executing yt-dlp for %d URL(s) with %d flag(s)", len(t.URLs), len(args)-len(t.URLs))
 
 	// Run with context for cancellation support
 	result, err := cmd.Run(ctx, args...)
@@ -135,6 +132,24 @@ func (t *Task) downloadFiles(ctx context.Context, tempDir string) ([]string, err
 	}
 
 	return downloadedFiles, nil
+}
+
+func (t *Task) buildArgs(cfg config.YtdlpConfig) []string {
+	flags := slice.Clone(t.Flags)
+	if strings.TrimSpace(cfg.Cookies) != "" && !hasCookieFlag(flags) {
+		flags = append(flags, "--cookies", cfg.Cookies)
+	}
+	return append(flags, t.URLs...)
+}
+
+func hasCookieFlag(flags []string) bool {
+	for _, flag := range flags {
+		if flag == "--cookies" || strings.HasPrefix(flag, "--cookies=") ||
+			flag == "--cookies-from-browser" || strings.HasPrefix(flag, "--cookies-from-browser=") {
+			return true
+		}
+	}
+	return false
 }
 
 // transferFile transfers a single file to storage

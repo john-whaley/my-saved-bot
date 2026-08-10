@@ -75,8 +75,11 @@ func Init(ctx context.Context) <-chan struct{} {
 			Scope: &tg.BotCommandScopeDefault{},
 		})
 		_, err = client.API().BotsSetBotCommands(ctx, &tg.BotsSetBotCommandsRequest{
-			Scope:    &tg.BotCommandScopeDefault{},
-			Commands: []tg.BotCommand{{Command: "start", Description: i18n.T(i18nk.BotMsgCmdStart)}},
+			Scope: &tg.BotCommandScopeDefault{},
+			Commands: []tg.BotCommand{
+				{Command: "start", Description: i18n.T(i18nk.BotMsgCmdStart)},
+				{Command: "ytdlp", Description: "YouTube下载"},
+			},
 		})
 		resultChan <- struct {
 			client *gotgproto.Client

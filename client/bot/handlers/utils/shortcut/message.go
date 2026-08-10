@@ -3,6 +3,7 @@ package shortcut
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/url"
 	"strings"
 
@@ -138,26 +139,83 @@ func GetFilesFromUpdateLinkMessageWithReplyEdit(ctx *ext.Context, update *ext.Up
 			continue
 		}
 		groupID, isGroup := msg.GetGroupedID()
-		if isGroup && groupID != 0 && !linkUrl.Query().Has("single") {
-			gmsgs, err := tgutil.GetGroupedMessages(tctx, chatId, msg)
-			if err != nil {
-				logger.Errorf("failed to get grouped messages: %s", err)
-			} else {
+		if !linkUrl.Query().Has("single") {
+			gmsgs, groupID, err := getLinkedMessageGroup(tctx, chatId, msg, isGroup, groupID)
+			if err == nil && len(gmsgs) > 1 {
 				logger.Infof("found %d grouped media messages for %s", len(gmsgs), link)
 				normalizeGroupedMessages(gmsgs, msg, groupID)
 				for _, gmsg := range gmsgs {
 					addFile(tctx.Raw, gmsg)
 				}
+				continue
 			}
-		} else {
-			addFile(tctx.Raw, msg)
+			if err != nil {
+				logger.Debugf("failed to get linked message group for %s: %s", link, err)
+			}
 		}
+		addFile(tctx.Raw, msg)
 	}
 	if len(files) == 0 {
 		editReplied(i18n.T(i18nk.BotMsgCommonErrorNoSavableFilesFound, nil), nil)
 		return nil, nil, nil, dispatcher.EndGroups
 	}
 	return replied, files, editReplied, nil
+}
+
+func getLinkedMessageGroup(ctx *ext.Context, chatID int64, msg *tg.Message, isGroup bool, groupID int64) ([]*tg.Message, int64, error) {
+	if isGroup && groupID != 0 {
+		messages, err := tgutil.GetGroupedMessages(ctx, chatID, msg)
+		return messages, groupID, err
+	}
+	messages, err := nearbyMediaMessages(ctx, chatID, msg)
+	if err != nil {
+		return nil, 0, err
+	}
+	if len(messages) <= 1 {
+		return nil, 0, fmt.Errorf("no adjacent media group found")
+	}
+	return messages, fallbackGroupID(chatID, msg.GetID()), nil
+}
+
+func nearbyMediaMessages(ctx *ext.Context, chatID int64, msg *tg.Message) ([]*tg.Message, error) {
+	msgID := msg.GetID()
+	minID := msgID - 5
+	if minID < 1 {
+		minID = 1
+	}
+	msgs, err := tgutil.GetMessagesRange(ctx, chatID, minID, msgID+5)
+	if err != nil {
+		return nil, err
+	}
+	media := make([]*tg.Message, 0, len(msgs))
+	for _, candidate := range msgs {
+		if candidate == nil || !mediautil.IsSupported(candidate.Media) {
+			continue
+		}
+		media = append(media, candidate)
+	}
+	for start, candidate := range media {
+		if candidate.GetID() != msgID {
+			continue
+		}
+		end := start + 1
+		for end < len(media) && media[end].GetID() == media[end-1].GetID()+1 {
+			end++
+		}
+		begin := start
+		for begin > 0 && media[begin].GetID() == media[begin-1].GetID()+1 {
+			begin--
+		}
+		return media[begin:end], nil
+	}
+	return nil, fmt.Errorf("linked message is not in fetched media range")
+}
+
+func fallbackGroupID(chatID int64, msgID int) int64 {
+	if chatID < 0 {
+		chatID = -chatID
+	}
+	return chatID*1_000_000 + int64(msgID)
 }
 
 func normalizeGroupedMessages(messages []*tg.Message, source *tg.Message, groupID int64) {

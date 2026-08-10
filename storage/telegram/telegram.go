@@ -237,7 +237,7 @@ func (t *Telegram) newUploader(tctx *ext.Context, size int64) *uploader.Uploader
 
 func mediaCaption(filename string, override *string) []message.StyledTextOption {
 	if override == nil {
-		return []message.StyledTextOption{styling.Plain(filename)}
+		return nil
 	}
 	if *override == "" {
 		return nil

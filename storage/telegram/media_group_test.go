@@ -85,7 +85,7 @@ func TestMediaCaption(t *testing.T) {
 		override *string
 		wantLen  int
 	}{
-		{name: "filename fallback", wantLen: 1},
+		{name: "no source caption", wantLen: 0},
 		{name: "preserve empty source caption", override: &empty, wantLen: 0},
 		{name: "preserve source caption", override: &original, wantLen: 1},
 	}

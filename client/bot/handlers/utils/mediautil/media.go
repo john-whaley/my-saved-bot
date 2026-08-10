@@ -4,15 +4,12 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"text/template"
 	"time"
 
-	"github.com/charmbracelet/log"
 	"github.com/gotd/td/tg"
 	"github.com/krau/SaveAny-Bot/common/utils/strutil"
 	"github.com/krau/SaveAny-Bot/common/utils/tgutil"
 	"github.com/krau/SaveAny-Bot/database"
-	"github.com/krau/SaveAny-Bot/pkg/enums/fnamest"
 	"github.com/krau/SaveAny-Bot/pkg/tfile"
 )
 
@@ -48,37 +45,10 @@ func (f FilenameTemplateData) ToMap() map[string]string {
 }
 
 func TfileOptions(ctx context.Context, user *database.User, message *tg.Message) []tfile.TGFileOption {
-	opts := make([]tfile.TGFileOption, 0)
-	var fnameOpt tfile.TGFileOption
-	switch user.FilenameStrategy {
-	case fnamest.Message.String():
-		fnameOpt = tfile.WithName(tgutil.GenFileNameFromMessage(*message))
-	case fnamest.Template.String():
-		if user.FilenameTemplate == "" {
-			log.FromContext(ctx).Warnf("empty filename template")
-			fnameOpt = tfile.WithNameIfEmpty(tgutil.GenFileNameFromMessage(*message))
-			break
-		}
-		tmpl, err := template.New("filename").Parse(user.FilenameTemplate)
-		if err != nil {
-			log.FromContext(ctx).Errorf("failed to parse filename template: %s", err)
-			fnameOpt = tfile.WithNameIfEmpty(tgutil.GenFileNameFromMessage(*message))
-			break
-		}
-		data := BuildFilenameTemplateData(message)
-		var sb strings.Builder
-		err = tmpl.Execute(&sb, data)
-		if err != nil {
-			log.FromContext(ctx).Errorf("failed to execute filename template: %s", err)
-			fnameOpt = tfile.WithNameIfEmpty(tgutil.GenFileNameFromMessage(*message))
-			break
-		}
-		fnameOpt = tfile.WithName(sb.String())
-	default:
-		fnameOpt = tfile.WithNameIfEmpty(tgutil.GenFileNameFromMessage(*message))
+	return []tfile.TGFileOption{
+		tfile.WithNameIfEmpty(tgutil.GenFileNameFromMessage(*message)),
+		tfile.WithMessage(message),
 	}
-	opts = append(opts, fnameOpt, tfile.WithMessage(message))
-	return opts
 }
 
 func BuildFilenameTemplateData(message *tg.Message) map[string]string {

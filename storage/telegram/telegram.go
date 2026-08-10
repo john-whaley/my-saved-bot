@@ -164,7 +164,7 @@ func (t *Telegram) Save(ctx context.Context, r io.Reader, storagePath string) er
 	if err := t.limiter.Wait(ctx); err != nil {
 		return fmt.Errorf("rate limit failed: %w", err)
 	}
-	prepared, err := t.prepareMedia(ctx, tctx, r, storagePath, size, nil)
+	prepared, err := t.prepareMedia(ctx, tctx, r, storagePath, size, captionOverride)
 	if err != nil {
 		return err
 	}

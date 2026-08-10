@@ -143,6 +143,8 @@ func GetFilesFromUpdateLinkMessageWithReplyEdit(ctx *ext.Context, update *ext.Up
 			if err != nil {
 				logger.Errorf("failed to get grouped messages: %s", err)
 			} else {
+				logger.Infof("found %d grouped media messages for %s", len(gmsgs), link)
+				normalizeGroupedMessages(gmsgs, msg, groupID)
 				for _, gmsg := range gmsgs {
 					addFile(tctx.Raw, gmsg)
 				}
@@ -156,6 +158,40 @@ func GetFilesFromUpdateLinkMessageWithReplyEdit(ctx *ext.Context, update *ext.Up
 		return nil, nil, nil, dispatcher.EndGroups
 	}
 	return replied, files, editReplied, nil
+}
+
+func normalizeGroupedMessages(messages []*tg.Message, source *tg.Message, groupID int64) {
+	if groupID == 0 {
+		return
+	}
+	hasCaption := false
+	for _, msg := range messages {
+		if msg == nil {
+			continue
+		}
+		msg.SetGroupedID(groupID)
+		if strings.TrimSpace(msg.GetMessage()) != "" {
+			hasCaption = true
+		}
+	}
+	if hasCaption || source == nil || strings.TrimSpace(source.GetMessage()) == "" {
+		return
+	}
+	for _, msg := range messages {
+		if msg == nil {
+			continue
+		}
+		if msg.GetID() == source.GetID() {
+			msg.Message = source.GetMessage()
+			return
+		}
+	}
+	for _, msg := range messages {
+		if msg != nil {
+			msg.Message = source.GetMessage()
+			return
+		}
+	}
 }
 
 func GetCallbackDataWithAnswer[DataType any](ctx *ext.Context, update *ext.Update, dataid string) (DataType, error) {

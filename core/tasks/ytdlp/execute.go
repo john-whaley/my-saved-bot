@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/log"
-	"github.com/duke-git/lancet/v2/slice"
 	ytdlp "github.com/lrstanley/go-ytdlp"
 
 	"github.com/krau/SaveAny-Bot/config"
@@ -135,7 +134,7 @@ func (t *Task) downloadFiles(ctx context.Context, tempDir string) ([]string, err
 }
 
 func (t *Task) buildArgs(cfg config.YtdlpConfig) []string {
-	flags := slice.Clone(t.Flags)
+	flags := append([]string(nil), t.Flags...)
 	if strings.TrimSpace(cfg.Cookies) != "" && !hasCookieFlag(flags) {
 		flags = append(flags, "--cookies", cfg.Cookies)
 	}

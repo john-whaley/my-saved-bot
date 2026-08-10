@@ -295,15 +295,17 @@ func (t *Telegram) prepareMedia(ctx context.Context, tctx *ext.Context, r io.Rea
 	if mtype != nil && rs != nil {
 		switch mtypeStr := mtype.String(); {
 		case strings.HasPrefix(mtypeStr, "video/"):
-			media = doc.Video().SupportsStreaming()
 			thumb, err := extractThumbFrame(rs)
 			if err == nil {
 				thumb, err := upler.FromBytes(ctx, "thumb.jpg", thumb)
 				if err == nil {
 					doc = doc.Thumb(thumb)
 				}
+			} else {
+				log.FromContext(ctx).Debugf("Failed to extract video thumbnail for %s: %v", filename, err)
 			}
 			rs.Seek(0, io.SeekStart)
+			media = doc.Video().SupportsStreaming()
 			switch mtypeStr {
 			case "video/mp4":
 				info, err := getMP4Meta(rs)
@@ -412,6 +414,36 @@ func planMediaGroups(items []batchMediaItem) [][]batchMediaItem {
 	return groups
 }
 
+func albumCaptionOverride(group []batchMediaItem, index int) *string {
+	if len(group) == 0 {
+		return nil
+	}
+	if len(group) == 1 {
+		item := group[0].item
+		if !item.PreserveCaption {
+			return nil
+		}
+		return &item.Caption
+	}
+	if index > 0 {
+		empty := ""
+		return &empty
+	}
+	for _, mediaItem := range group {
+		item := mediaItem.item
+		if item.PreserveCaption && item.Caption != "" {
+			return &item.Caption
+		}
+	}
+	for _, mediaItem := range group {
+		item := mediaItem.item
+		if item.PreserveCaption {
+			return &item.Caption
+		}
+	}
+	return nil
+}
+
 func (t *Telegram) saveMediaGroup(ctx context.Context, tctx *ext.Context, group []batchMediaItem) error {
 	return retry.Retry(func() error {
 		if len(group) == 1 && group[0].useSingleSave {
@@ -430,15 +462,12 @@ func (t *Telegram) saveMediaGroup(ctx context.Context, tctx *ext.Context, group 
 		}
 
 		prepared := make([]preparedMedia, 0, len(group))
-		for _, mediaItem := range group {
+		for index, mediaItem := range group {
 			item := mediaItem.item
 			if _, err := item.Reader.Seek(0, io.SeekStart); err != nil {
 				return fmt.Errorf("failed to seek batch item: %w", err)
 			}
-			var captionOverride *string
-			if item.PreserveCaption {
-				captionOverride = &item.Caption
-			}
+			captionOverride := albumCaptionOverride(group, index)
 			media, err := t.prepareMedia(ctx, tctx, item.Reader, item.StoragePath, item.Size, captionOverride)
 			if err != nil {
 				return err

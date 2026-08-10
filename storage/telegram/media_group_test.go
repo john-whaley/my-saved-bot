@@ -98,6 +98,44 @@ func TestMediaCaption(t *testing.T) {
 	}
 }
 
+func TestAlbumCaptionOverride(t *testing.T) {
+	caption := "album caption"
+	empty := ""
+	group := []batchMediaItem{
+		{item: storagetypes.BatchItem{SourceGroupKey: "a", Caption: empty, PreserveCaption: true}},
+		{item: storagetypes.BatchItem{SourceGroupKey: "a", Caption: caption, PreserveCaption: true}},
+		{item: storagetypes.BatchItem{SourceGroupKey: "a", PreserveCaption: false}},
+	}
+
+	first := albumCaptionOverride(group, 0)
+	if first == nil || *first != caption {
+		t.Fatalf("first album caption = %v, want %q", first, caption)
+	}
+	second := albumCaptionOverride(group, 1)
+	if second == nil || *second != "" {
+		t.Fatalf("second album caption = %v, want explicit empty caption", second)
+	}
+}
+
+func TestAlbumCaptionOverrideSingleItem(t *testing.T) {
+	caption := "single caption"
+	group := []batchMediaItem{
+		{item: storagetypes.BatchItem{Caption: caption, PreserveCaption: true}},
+	}
+
+	got := albumCaptionOverride(group, 0)
+	if got == nil || *got != caption {
+		t.Fatalf("single caption = %v, want %q", got, caption)
+	}
+}
+
+func TestAlbumCaptionOverrideNoSourceCaption(t *testing.T) {
+	group := []batchMediaItem{{item: storagetypes.BatchItem{SourceGroupKey: "a"}}}
+	if got := albumCaptionOverride(group, 0); got != nil {
+		t.Fatalf("caption = %q, want nil", *got)
+	}
+}
+
 func TestInspectBatchItemRewindsBeforeMimetypeDetection(t *testing.T) {
 	data := []byte("\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR")
 	reader := bytes.NewReader(data)

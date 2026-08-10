@@ -3,7 +3,6 @@ package shortcut
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/url"
 	"strings"
 
@@ -167,55 +166,7 @@ func getLinkedMessageGroup(ctx *ext.Context, chatID int64, msg *tg.Message, isGr
 		messages, err := tgutil.GetGroupedMessages(ctx, chatID, msg)
 		return messages, groupID, err
 	}
-	messages, err := nearbyMediaMessages(ctx, chatID, msg)
-	if err != nil {
-		return nil, 0, err
-	}
-	if len(messages) <= 1 {
-		return nil, 0, fmt.Errorf("no adjacent media group found")
-	}
-	return messages, fallbackGroupID(chatID, msg.GetID()), nil
-}
-
-func nearbyMediaMessages(ctx *ext.Context, chatID int64, msg *tg.Message) ([]*tg.Message, error) {
-	msgID := msg.GetID()
-	minID := msgID - 5
-	if minID < 1 {
-		minID = 1
-	}
-	msgs, err := tgutil.GetMessagesRange(ctx, chatID, minID, msgID+5)
-	if err != nil {
-		return nil, err
-	}
-	media := make([]*tg.Message, 0, len(msgs))
-	for _, candidate := range msgs {
-		if candidate == nil || !mediautil.IsSupported(candidate.Media) {
-			continue
-		}
-		media = append(media, candidate)
-	}
-	for start, candidate := range media {
-		if candidate.GetID() != msgID {
-			continue
-		}
-		end := start + 1
-		for end < len(media) && media[end].GetID() == media[end-1].GetID()+1 {
-			end++
-		}
-		begin := start
-		for begin > 0 && media[begin].GetID() == media[begin-1].GetID()+1 {
-			begin--
-		}
-		return media[begin:end], nil
-	}
-	return nil, fmt.Errorf("linked message is not in fetched media range")
-}
-
-func fallbackGroupID(chatID int64, msgID int) int64 {
-	if chatID < 0 {
-		chatID = -chatID
-	}
-	return chatID*1_000_000 + int64(msgID)
+	return nil, 0, nil
 }
 
 func normalizeGroupedMessages(messages []*tg.Message, source *tg.Message, groupID int64) {

@@ -24,9 +24,10 @@ type Config struct {
 	Threads      int         `toml:"threads" mapstructure:"threads" json:"threads"`
 	Stream       bool        `toml:"stream" mapstructure:"stream" json:"stream"`
 	Proxy        string      `toml:"proxy" mapstructure:"proxy" json:"proxy"`
-	Log          logConfig   `toml:"log" mapstructure:"log" json:"log"`
-	Aria2        aria2Config `toml:"aria2" mapstructure:"aria2" json:"aria2"`
-	API          apiConfig   `toml:"api" mapstructure:"api" json:"api"`
+	Log           logConfig           `toml:"log" mapstructure:"log" json:"log"`
+	Aria2         aria2Config         `toml:"aria2" mapstructure:"aria2" json:"aria2"`
+	CaptionFilter captionFilterConfig `toml:"caption_filter" mapstructure:"caption_filter" json:"caption_filter"`
+	API           apiConfig           `toml:"api" mapstructure:"api" json:"api"`
 
 	Cache    cacheConfig             `toml:"cache" mapstructure:"cache" json:"cache"`
 	Users    []userConfig            `toml:"users" mapstructure:"users" json:"users"`
@@ -51,6 +52,17 @@ type apiConfig struct {
 	Host   string `toml:"host" mapstructure:"host" json:"host"`
 	Port   int    `toml:"port" mapstructure:"port" json:"port"`
 	Token  string `toml:"token" mapstructure:"token" json:"token"`
+}
+
+type captionFilterConfig struct {
+	Enable         bool     `toml:"enable" mapstructure:"enable" json:"enable"`
+	RemoveMentions bool     `toml:"remove_mentions" mapstructure:"remove_mentions" json:"remove_mentions"`
+	RemoveURLs     bool     `toml:"remove_urls" mapstructure:"remove_urls" json:"remove_urls"`
+	RemoveWords    []string `toml:"remove_words" mapstructure:"remove_words" json:"remove_words"`
+	RemoveRegex    []string `toml:"remove_regex" mapstructure:"remove_regex" json:"remove_regex"`
+	DropIfContains []string `toml:"drop_if_contains" mapstructure:"drop_if_contains" json:"drop_if_contains"`
+	DropIfRegex    []string `toml:"drop_if_regex" mapstructure:"drop_if_regex" json:"drop_if_regex"`
+	MaxLength      int      `toml:"max_length" mapstructure:"max_length" json:"max_length"`
 }
 
 var cfg = &Config{}
@@ -108,7 +120,7 @@ func Init(ctx context.Context, configFile ...string) error {
 		"workers":       3,
 		"retry":         3,
 		"threads":       4,
-		"log.level": "debug",
+		"log.level":     "debug",
 
 		// 缓存配置
 		"cache.ttl":          86400,
@@ -134,6 +146,12 @@ func Init(ctx context.Context, configFile ...string) error {
 		"api.host":   "0.0.0.0",
 		"api.port":   8080,
 		"api.token":  "",
+
+		// Caption filter
+		"caption_filter.enable":          false,
+		"caption_filter.remove_mentions": false,
+		"caption_filter.remove_urls":     false,
+		"caption_filter.max_length":      0,
 
 		// yt-dlp
 		"ytdlp.recode": "mp4",

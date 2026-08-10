@@ -20,6 +20,7 @@ import (
 	"github.com/gotd/td/telegram/message/styling"
 	"github.com/gotd/td/telegram/uploader"
 	"github.com/gotd/td/tg"
+	"github.com/krau/SaveAny-Bot/common/utils/captionfilter"
 	"github.com/krau/SaveAny-Bot/common/utils/dlutil"
 	"github.com/krau/SaveAny-Bot/common/utils/tgutil"
 	"github.com/krau/SaveAny-Bot/config"
@@ -189,6 +190,7 @@ func sourceCaptionOverride(ctx context.Context) *string {
 	if !ok {
 		return nil
 	}
+	caption = captionfilter.Apply(caption)
 	return &caption
 }
 
@@ -239,7 +241,11 @@ func mediaCaption(filename string, override *string) []message.StyledTextOption 
 	if override == nil || *override == "" {
 		return nil
 	}
-	return []message.StyledTextOption{styling.Plain(*override)}
+	caption := captionfilter.Apply(*override)
+	if caption == "" {
+		return nil
+	}
+	return []message.StyledTextOption{styling.Plain(caption)}
 }
 
 func (t *Telegram) prepareMedia(ctx context.Context, tctx *ext.Context, r io.Reader, storagePath string, size int64, captionOverride *string) (*preparedMedia, error) {
@@ -420,6 +426,7 @@ func albumCaptionOverride(group []batchMediaItem, index int) *string {
 		if !item.PreserveCaption {
 			return nil
 		}
+		item.Caption = captionfilter.Apply(item.Caption)
 		return &item.Caption
 	}
 	if index > 0 {
@@ -428,13 +435,15 @@ func albumCaptionOverride(group []batchMediaItem, index int) *string {
 	}
 	for _, mediaItem := range group {
 		item := mediaItem.item
-		if item.PreserveCaption && item.Caption != "" {
-			return &item.Caption
+		caption := captionfilter.Apply(item.Caption)
+		if item.PreserveCaption && caption != "" {
+			return &caption
 		}
 	}
 	for _, mediaItem := range group {
 		item := mediaItem.item
 		if item.PreserveCaption {
+			item.Caption = captionfilter.Apply(item.Caption)
 			return &item.Caption
 		}
 	}

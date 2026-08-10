@@ -6,6 +6,17 @@ retry = 3      # 下载失败重试次数
 threads = 4    # 单个任务下载使用的最大线程数
 stream = false # 使用流式传输模式, 建议仅在硬盘空间十分有限时使用.
 
+[caption_filter]
+# 描述过滤默认关闭；开启后会作用于 TG/X 等发送到 Telegram 的 caption
+enable = false
+remove_mentions = false # 删除 @username
+remove_urls = false     # 删除 http(s):// 和 t.me 链接
+remove_words = []       # 删除固定词, 例如 ["fuck", "广告"]
+remove_regex = []       # 删除正则匹配内容, 例如 ['#[^\s]+']
+drop_if_contains = []   # 命中固定词时整条描述不发送
+drop_if_regex = []      # 命中正则时整条描述不发送
+max_length = 0          # 0 表示不限制长度
+
 [log]
 # 日志级别, 可选: debug, info, warn, error, fatal
 level = "debug"

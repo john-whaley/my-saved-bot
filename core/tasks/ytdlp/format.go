@@ -16,7 +16,7 @@ func buildFormatSelector(maxHeight int) string {
 		return ""
 	}
 	h := strconv.Itoa(maxHeight)
-	return "bv*[height<=" + h + "]+ba/b[height<=" + h + "]/b"
+	return "bv*[height<=" + h + "][ext=mp4]+ba[ext=m4a]/b[height<=" + h + "][ext=mp4]/b[ext=mp4]/b[height<=" + h + "]/b"
 }
 
 // applyFormatConfig configures format/quality on the yt-dlp command according to

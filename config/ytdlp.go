@@ -7,6 +7,8 @@ type YtdlpConfig struct {
 	// Format is a raw yt-dlp format selector (-f). When set, it takes precedence
 	// over MaxHeight and gives the user full control.
 	Format string `toml:"format" mapstructure:"format" json:"format"`
+	// MergeOutputFormat asks yt-dlp/ffmpeg to remux merged streams into this container.
+	MergeOutputFormat string `toml:"merge_output_format" mapstructure:"merge_output_format" json:"merge_output_format"`
 	// Recode is the target video container yt-dlp recodes into (e.g. mp4).
 	// Empty disables recoding.
 	Recode string `toml:"recode" mapstructure:"recode" json:"recode"`

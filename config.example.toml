@@ -51,10 +51,12 @@ remove_after_transfer = true
 # 仅在使用 /ytdlp 命令且未手动指定任何参数时生效
 max_height = 1080
 # 直接指定 yt-dlp format 选择表达式, 留空则使用 max_height
-# 设置后优先级高于 max_height, 例如: "bv*[height<=720]+ba/b"
-format = ""
-# 下载后转封装的视频容器格式, 留空则不转封装. 默认 mp4
-recode = "mp4"
+# 下面这个默认值优先选择 mp4 视频流 + m4a 音频流，方便高效合并成 Telegram 友好的 mp4
+format = "bv*[height<=720][ext=mp4]+ba[ext=m4a]/b[height<=720][ext=mp4]/b[ext=mp4]/b[height<=720]/b"
+# 合并输出容器；这是 remux/封装合并，通常比 recode 省 CPU
+merge_output_format = "mp4"
+# 重新转码容器，比较吃 CPU；留空表示不强制重编码
+recode = ""
 # yt-dlp cookies.txt 路径, 用于 YouTube 等需要登录验证的网站. 留空则不使用
 cookies = ""
 

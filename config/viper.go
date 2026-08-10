@@ -154,8 +154,9 @@ func Init(ctx context.Context, configFile ...string) error {
 		"caption_filter.max_length":      0,
 
 		// yt-dlp
-		"ytdlp.recode": "mp4",
-		"ytdlp.cookies": "",
+		"ytdlp.recode":              "",
+		"ytdlp.merge_output_format": "mp4",
+		"ytdlp.cookies":             "",
 	}
 
 	for key, value := range defaultConfigs {

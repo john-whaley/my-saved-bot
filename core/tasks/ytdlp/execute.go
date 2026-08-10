@@ -2,6 +2,7 @@ package ytdlp
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/krau/SaveAny-Bot/config"
 	"github.com/krau/SaveAny-Bot/pkg/enums/ctxkey"
+	"github.com/krau/SaveAny-Bot/pkg/storagetypes"
 )
 
 // Execute implements core.Executable.
@@ -56,10 +58,10 @@ func (t *Task) Execute(ctx context.Context) error {
 		return err
 	}
 
-	// Transfer downloaded files to storage
+	metadata := loadMetadata(ctx, tempDir)
 	logger.Infof("Transferring %d file(s) to storage %s", len(downloadedFiles), t.Storage.Name())
 	for _, filePath := range downloadedFiles {
-		if err := t.transferFile(ctx, filePath); err != nil {
+		if err := t.transferFile(ctx, filePath, metadata[metadataKey(filePath)]); err != nil {
 			logger.Errorf("File transfer failed: %v", err)
 			if t.Progress != nil {
 				t.Progress.OnDone(ctx, t, err)
@@ -125,6 +127,9 @@ func (t *Task) downloadFiles(ctx context.Context, tempDir string) ([]string, err
 		if file.IsDir() {
 			continue
 		}
+		if strings.EqualFold(filepath.Ext(file.Name()), ".json") {
+			continue
+		}
 		fullPath := filepath.Join(tempDir, file.Name())
 		downloadedFiles = append(downloadedFiles, fullPath)
 		logger.Debugf("Downloaded file: %s", file.Name())
@@ -135,10 +140,34 @@ func (t *Task) downloadFiles(ctx context.Context, tempDir string) ([]string, err
 
 func (t *Task) buildArgs(cfg config.YtdlpConfig) []string {
 	flags := append([]string(nil), t.Flags...)
+	if !hasWriteInfoJSONFlag(flags) {
+		flags = append(flags, "--write-info-json")
+	}
+	if strings.TrimSpace(cfg.MergeOutputFormat) != "" && !hasMergeOutputFormatFlag(flags) {
+		flags = append(flags, "--merge-output-format", cfg.MergeOutputFormat)
+	}
 	if strings.TrimSpace(cfg.Cookies) != "" && !hasCookieFlag(flags) {
 		flags = append(flags, "--cookies", cfg.Cookies)
 	}
 	return append(flags, t.URLs...)
+}
+
+func hasWriteInfoJSONFlag(flags []string) bool {
+	for _, flag := range flags {
+		if flag == "--write-info-json" || flag == "--no-write-info-json" {
+			return true
+		}
+	}
+	return false
+}
+
+func hasMergeOutputFormatFlag(flags []string) bool {
+	for _, flag := range flags {
+		if flag == "--merge-output-format" || strings.HasPrefix(flag, "--merge-output-format=") {
+			return true
+		}
+	}
+	return false
 }
 
 func hasCookieFlag(flags []string) bool {
@@ -151,8 +180,60 @@ func hasCookieFlag(flags []string) bool {
 	return false
 }
 
+type videoMetadata struct {
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	WebpageURL  string `json:"webpage_url"`
+}
+
+func loadMetadata(ctx context.Context, tempDir string) map[string]videoMetadata {
+	logger := log.FromContext(ctx)
+	entries, err := os.ReadDir(tempDir)
+	if err != nil {
+		logger.Warnf("Failed to read yt-dlp metadata directory: %v", err)
+		return nil
+	}
+	metadata := make(map[string]videoMetadata)
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(strings.ToLower(entry.Name()), ".info.json") {
+			continue
+		}
+		path := filepath.Join(tempDir, entry.Name())
+		data, err := os.ReadFile(path)
+		if err != nil {
+			logger.Warnf("Failed to read yt-dlp metadata %s: %v", entry.Name(), err)
+			continue
+		}
+		var meta videoMetadata
+		if err := json.Unmarshal(data, &meta); err != nil {
+			logger.Warnf("Failed to parse yt-dlp metadata %s: %v", entry.Name(), err)
+			continue
+		}
+		base := strings.TrimSuffix(entry.Name(), ".info.json")
+		metadata[base] = meta
+	}
+	return metadata
+}
+
+func metadataKey(filePath string) string {
+	name := filepath.Base(filePath)
+	return strings.TrimSuffix(name, filepath.Ext(name))
+}
+
+func captionFromMetadata(meta videoMetadata) (string, bool) {
+	parts := make([]string, 0, 2)
+	if title := strings.TrimSpace(meta.Title); title != "" {
+		parts = append(parts, title)
+	}
+	if description := strings.TrimSpace(meta.Description); description != "" {
+		parts = append(parts, description)
+	}
+	caption := strings.TrimSpace(strings.Join(parts, "\n\n"))
+	return caption, caption != ""
+}
+
 // transferFile transfers a single file to storage
-func (t *Task) transferFile(ctx context.Context, filePath string) error {
+func (t *Task) transferFile(ctx context.Context, filePath string, meta videoMetadata) error {
 	logger := log.FromContext(ctx)
 
 	// Check if file exists
@@ -174,6 +255,9 @@ func (t *Task) transferFile(ctx context.Context, filePath string) error {
 
 	// Set content length in context for storage
 	ctx = context.WithValue(ctx, ctxkey.ContentLength, fileInfo.Size())
+	if caption, ok := captionFromMetadata(meta); ok {
+		ctx = storagetypes.WithSourceCaption(ctx, caption)
+	}
 
 	// Save to storage
 	fileName := filepath.Base(filePath)

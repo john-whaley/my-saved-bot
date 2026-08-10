@@ -13,6 +13,7 @@ import (
 	"github.com/krau/SaveAny-Bot/client/bot/handlers"
 	"github.com/krau/SaveAny-Bot/client/middleware"
 	"github.com/krau/SaveAny-Bot/common/i18n"
+	"github.com/krau/SaveAny-Bot/common/i18n/i18nk"
 	"github.com/krau/SaveAny-Bot/common/utils/tgutil"
 	"github.com/krau/SaveAny-Bot/config"
 	"github.com/krau/SaveAny-Bot/database"
@@ -73,13 +74,9 @@ func Init(ctx context.Context) <-chan struct{} {
 		client.API().BotsSetBotCommands(ctx, &tg.BotsSetBotCommandsRequest{
 			Scope: &tg.BotCommandScopeDefault{},
 		})
-		commands := make([]tg.BotCommand, 0, len(handlers.CommandHandlers))
-		for _, info := range handlers.CommandHandlers {
-			commands = append(commands, tg.BotCommand{Command: info.Cmd, Description: i18n.T(info.Desc)})
-		}
 		_, err = client.API().BotsSetBotCommands(ctx, &tg.BotsSetBotCommandsRequest{
 			Scope:    &tg.BotCommandScopeDefault{},
-			Commands: commands,
+			Commands: []tg.BotCommand{{Command: "start", Description: i18n.T(i18nk.BotMsgCmdStart)}},
 		})
 		resultChan <- struct {
 			client *gotgproto.Client

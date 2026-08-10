@@ -17,6 +17,7 @@ import (
 
 type Config struct {
 	Lang         string      `toml:"lang" mapstructure:"lang" json:"lang"`
+	StartMessage string      `toml:"start_message" mapstructure:"start_message" json:"start_message"`
 	Workers      int         `toml:"workers" mapstructure:"workers"`
 	Retry        int         `toml:"retry" mapstructure:"retry"`
 	NoCleanCache bool        `toml:"no_clean_cache" mapstructure:"no_clean_cache" json:"no_clean_cache"`
@@ -102,10 +103,11 @@ func Init(ctx context.Context, configFile ...string) error {
 
 	defaultConfigs := map[string]any{
 		// 基础配置
-		"lang":      "zh-Hans",
-		"workers":   3,
-		"retry":     3,
-		"threads":   4,
+		"lang":          "zh-Hans",
+		"start_message": "欢迎使用保存视频机器人",
+		"workers":       3,
+		"retry":         3,
+		"threads":       4,
 		"log.level": "debug",
 
 		// 缓存配置

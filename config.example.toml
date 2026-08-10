@@ -1,6 +1,7 @@
 # 创建文件时，若需要保留中文注释，请务必确保本文件编码为 UTF-8 ，否则会无法读取。
 # 更详细的配置请在 https://sabot.unv.app/deployment/configuration 查看
 workers = 4    # 同时下载文件数
+start_message = "欢迎使用保存视频机器人" # /start 回复内容
 retry = 3      # 下载失败重试次数
 threads = 4    # 单个任务下载使用的最大线程数
 stream = false # 使用流式传输模式, 建议仅在硬盘空间十分有限时使用.

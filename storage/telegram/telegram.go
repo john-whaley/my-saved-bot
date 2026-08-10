@@ -17,6 +17,7 @@ import (
 	"github.com/duke-git/lancet/v2/validator"
 	"github.com/gabriel-vasile/mimetype"
 	"github.com/gotd/td/telegram/message"
+	"github.com/gotd/td/telegram/message/styling"
 	"github.com/gotd/td/telegram/uploader"
 	"github.com/gotd/td/tg"
 	"github.com/krau/SaveAny-Bot/common/utils/dlutil"
@@ -235,7 +236,10 @@ func (t *Telegram) newUploader(tctx *ext.Context, size int64) *uploader.Uploader
 }
 
 func mediaCaption(filename string, override *string) []message.StyledTextOption {
-	return nil
+	if override == nil || *override == "" {
+		return nil
+	}
+	return []message.StyledTextOption{styling.Plain(*override)}
 }
 
 func (t *Telegram) prepareMedia(ctx context.Context, tctx *ext.Context, r io.Reader, storagePath string, size int64, captionOverride *string) (*preparedMedia, error) {

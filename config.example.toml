@@ -1,0 +1,91 @@
+# 创建文件时，若需要保留中文注释，请务必确保本文件编码为 UTF-8 ，否则会无法读取。
+# 更详细的配置请在 https://sabot.unv.app/deployment/configuration 查看
+workers = 4    # 同时下载文件数
+retry = 3      # 下载失败重试次数
+threads = 4    # 单个任务下载使用的最大线程数
+stream = false # 使用流式传输模式, 建议仅在硬盘空间十分有限时使用.
+
+[log]
+# 日志级别, 可选: debug, info, warn, error, fatal
+level = "debug"
+
+[telegram]
+# Bot Token
+# 更换 Bot Token 后请删除会话数据库文件 (默认路径为 data/session.db )
+token = ""
+# Telegram API 配置, 若不配置也可运行, 将使用默认的 API ID 和 API HASH
+# 推荐使用自己的 API ID 和 API HASH (https://my.telegram.org)
+# app_id = 1025907
+# app_hash = "452b0359b988148995f22ff0f4229750"
+[telegram.proxy]
+# 启用代理连接 telegram
+enable = false
+url = "socks5://127.0.0.1:7890"
+
+# Aria2 配置
+[aria2]
+# 启用 Aria2 下载支持
+enable = false
+# Aria2 RPC URL
+url = "http://localhost:6800/jsonrpc"
+# Aria2 RPC Secret (如果配置了 rpc-secret)
+secret = ""
+# 转存完成后删除 Aria2 下载的本地文件
+remove_after_transfer = true
+
+# yt-dlp 视频下载配置
+[ytdlp]
+# 默认下载的最高视频清晰度 (按高度限制), 如 1080, 720, 480; 0 表示不限制 (下载最佳画质)
+# 仅在使用 /ytdlp 命令且未手动指定任何参数时生效
+max_height = 1080
+# 直接指定 yt-dlp format 选择表达式, 留空则使用 max_height
+# 设置后优先级高于 max_height, 例如: "bv*[height<=720]+ba/b"
+format = ""
+# 下载后转封装的视频容器格式, 留空则不转封装. 默认 mp4
+recode = "mp4"
+
+# HTTP API 配置
+[api]
+# 启用 HTTP API
+enable = false
+# 监听地址
+host = "0.0.0.0"
+# 监听端口
+port = 8080
+# 认证 Token (必需)
+token = ""
+
+# 存储列表
+[[storages]]
+# 标识名, 需要唯一
+name = "本机1"
+# 存储类型, 目前可用: local, alist, webdav, s3, telegram
+type = "local"
+# 启用存储
+enable = true
+# 文件保存根路径
+base_path = "./downloads"
+
+[[storages]]
+name = "MyWebdav"
+type = "webdav"
+enable = false
+base_path = '/path/telegram'
+url = 'https://example.com/dav'
+username = 'username'
+password = 'password'
+
+# 用户列表
+[[users]]
+# telegram user id
+id = 114514
+# 存储过滤列表, 元素为存储标识名.
+# 将该列表留空并开启黑名单过滤模式以允许使用所有存储，此处示例为黑名单模式，用户 114514 可使用所有存储
+storages = []
+# 使用列表过滤黑名单模式，反之则为白名单，白名单请在列表中指定可用的存储.
+blacklist = true
+
+[[users]]
+id = 123456
+storages = ["本机1"]
+blacklist = false  # 使用白名单模式，此时，用户 123456 仅可使用标识名为 '本地1' 的存储

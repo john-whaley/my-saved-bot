@@ -1,0 +1,15 @@
+config.toml
+logs/
+tmp/
+data/
+downloads/
+session.*
+cache.db
+.vscode/
+temp/
+.hugo_build.lock
+playwright/
+testplugins/
+*.exe
+tmp-*
+saveany-bot

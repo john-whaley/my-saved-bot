@@ -169,10 +169,25 @@ func FromMediaMessage(media tg.MessageMediaClass, client downloader.Client, msg 
 		return nil, err
 	}
 	if messageFile, ok := file.(*tgFile); ok {
-		if messageFile.message == nil {
-			messageFile.message = msg
-		}
+		messageFile.message = mergeMessageMetadata(msg, messageFile.message)
 		return messageFile, nil
 	}
 	return NewTGFile(file.Location(), file.Dler(), file.Size(), file.Name(), WithMessage(msg)).(TGFileMessage), nil
+}
+
+func mergeMessageMetadata(source, override *tg.Message) *tg.Message {
+	if source == nil {
+		return override
+	}
+	if override == nil {
+		return source
+	}
+	merged := *source
+	if override.Message != "" {
+		merged.Message = override.Message
+	}
+	if groupID, ok := override.GetGroupedID(); ok && groupID != 0 {
+		merged.GroupedID = groupID
+	}
+	return &merged
 }

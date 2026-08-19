@@ -1,4 +1,8 @@
 config.toml
+cookies.txt
+cookies.text
+*cookies*.txt
+*cookies*.text
 logs/
 tmp/
 data/

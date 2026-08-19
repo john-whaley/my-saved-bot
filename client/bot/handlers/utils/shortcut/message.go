@@ -3,6 +3,8 @@ package shortcut
 
 import (
 	"encoding/json"
+	"fmt"
+	"hash/fnv"
 	"net/url"
 	"regexp"
 	"sort"
@@ -262,10 +264,9 @@ func joinedMessageText(msgs []*tg.Message) string {
 }
 
 func manualLinkedGroupID(chatID int64, msgID, count int) int64 {
-	if chatID < 0 {
-		chatID = -chatID
-	}
-	return chatID*1_000_000_000 + int64(msgID*100+count)
+	h := fnv.New64a()
+	_, _ = h.Write([]byte(fmt.Sprintf("manual:%d:%d:%d", chatID, msgID, count)))
+	return int64(h.Sum64() & 0x7fffffffffffffff)
 }
 
 func getLinkedMessageGroup(ctx *ext.Context, chatID int64, msg *tg.Message, isGroup bool, groupID int64) ([]*tg.Message, int64, error) {

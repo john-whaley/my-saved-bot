@@ -1,5 +1,7 @@
 services:
   saveany-bot:
+    build:
+      context: .
     image: ghcr.io/krau/saveany-bot:latest
     container_name: saveany-bot
     restart: unless-stopped

@@ -82,7 +82,7 @@ func GetFilesFromUpdateLinkMessageWithReplyEdit(ctx *ext.Context, update *ext.Up
 		logger.Warn("no matched message links but called handleMessageLink")
 		return nil, nil, nil, dispatcher.EndGroups
 	}
-	manualCount := parseManualLinkedMessagesCount(update.EffectiveMessage.Message)
+	manualCount := parseManualLinkedMessagesCount(update.EffectiveMessage.Message.GetMessage())
 	replied, err = ctx.Reply(update, ext.ReplyTextString(i18n.T(i18nk.BotMsgCommonInfoFetchingMessages, nil)), nil)
 	if err != nil {
 		logger.Errorf("failed to reply: %s", err)

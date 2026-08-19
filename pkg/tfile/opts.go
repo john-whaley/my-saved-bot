@@ -10,6 +10,24 @@ func WithMessage(msg *tg.Message) TGFileOption {
 	}
 }
 
+func WithSourceCaption(caption string) TGFileOption {
+	return func(f *tgFile) {
+		if f.message == nil {
+			f.message = &tg.Message{}
+		}
+		f.message.Message = caption
+	}
+}
+
+func WithSourceGroupID(groupID int64) TGFileOption {
+	return func(f *tgFile) {
+		if f.message == nil {
+			f.message = &tg.Message{}
+		}
+		f.message.GroupedID = groupID
+	}
+}
+
 func WithName(name string) TGFileOption {
 	return func(f *tgFile) {
 		f.name = name

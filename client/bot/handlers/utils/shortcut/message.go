@@ -4,6 +4,9 @@ package shortcut
 import (
 	"encoding/json"
 	"net/url"
+	"regexp"
+	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/celestix/gotgproto/dispatcher"
@@ -26,6 +29,11 @@ import (
 	"github.com/krau/SaveAny-Bot/pkg/telegraph"
 	"github.com/krau/SaveAny-Bot/pkg/tfile"
 )
+
+const maxManualLinkedMessages = 10
+const maxManualLinkedScanMessages = 50
+
+var manualLinkedMessagesRegexp = regexp.MustCompile(`(?:^|\s)--n-(\d+)(?:\s|$)`)
 
 // 获取消息中的文件并回复等待消息, 返回等待消息, 获取到的文件
 func GetFileFromMessageWithReply(ctx *ext.Context, update *ext.Update, message *tg.Message, tfileopts ...tfile.TGFileOption) (replied *types.Message,
@@ -72,6 +80,7 @@ func GetFilesFromUpdateLinkMessageWithReplyEdit(ctx *ext.Context, update *ext.Up
 		logger.Warn("no matched message links but called handleMessageLink")
 		return nil, nil, nil, dispatcher.EndGroups
 	}
+	manualCount := parseManualLinkedMessagesCount(update.EffectiveMessage.Message)
 	replied, err = ctx.Reply(update, ext.ReplyTextString(i18n.T(i18nk.BotMsgCommonInfoFetchingMessages, nil)), nil)
 	if err != nil {
 		logger.Errorf("failed to reply: %s", err)
@@ -132,6 +141,12 @@ func GetFilesFromUpdateLinkMessageWithReplyEdit(ctx *ext.Context, update *ext.Up
 			logger.Errorf("failed to parse message link %s: %s", link, err)
 			continue
 		}
+		if manualCount > 0 {
+			if err := addManualLinkedMessages(tctx, ctx, user, chatId, msgId, manualCount, &files); err != nil {
+				logger.Errorf("failed to get manual linked messages for %s: %s", link, err)
+			}
+			continue
+		}
 		msg, err := tgutil.GetMessageByID(tctx, chatId, msgId)
 		if err != nil {
 			logger.Error(err)
@@ -159,6 +174,98 @@ func GetFilesFromUpdateLinkMessageWithReplyEdit(ctx *ext.Context, update *ext.Up
 		return nil, nil, nil, dispatcher.EndGroups
 	}
 	return replied, files, editReplied, nil
+}
+
+func parseManualLinkedMessagesCount(text string) int {
+	matches := manualLinkedMessagesRegexp.FindStringSubmatch(text)
+	if len(matches) < 2 {
+		return 0
+	}
+	count, err := strconv.Atoi(matches[1])
+	if err != nil || count <= 0 {
+		return 0
+	}
+	if count > maxManualLinkedMessages {
+		return maxManualLinkedMessages
+	}
+	return count
+}
+
+func addManualLinkedMessages(tctx, botCtx *ext.Context, user *database.User, chatID int64, msgID, count int, files *[]tfile.TGFileMessage) error {
+	msgs, err := tgutil.GetMessagesRange(tctx, chatID, msgID, msgID+maxManualLinkedScanMessages-1)
+	if err != nil {
+		return err
+	}
+	if len(msgs) == 0 {
+		return nil
+	}
+	sort.Slice(msgs, func(i, j int) bool {
+		return msgs[i].GetID() < msgs[j].GetID()
+	})
+	msgs = trimManualLinkedMessages(msgs, count)
+	caption := joinedMessageText(msgs)
+	groupID := manualLinkedGroupID(chatID, msgID, count)
+	for _, msg := range msgs {
+		if msg == nil || !mediautil.IsSupported(msg.Media) {
+			continue
+		}
+		media, ok := msg.GetMedia()
+		if !ok {
+			continue
+		}
+		opts := append(mediautil.TfileOptions(botCtx, user, msg),
+			tfile.WithSourceGroupID(groupID),
+			tfile.WithSourceCaption(caption),
+		)
+		file, err := tfile.FromMediaMessage(media, tctx.Raw, msg, opts...)
+		if err != nil {
+			return err
+		}
+		*files = append(*files, file)
+	}
+	return nil
+}
+
+func trimManualLinkedMessages(msgs []*tg.Message, mediaCount int) []*tg.Message {
+	if mediaCount <= 0 {
+		return nil
+	}
+	selected := make([]*tg.Message, 0, len(msgs))
+	foundMedia := 0
+	for _, msg := range msgs {
+		if msg == nil {
+			continue
+		}
+		selected = append(selected, msg)
+		if mediautil.IsSupported(msg.Media) {
+			foundMedia++
+			if foundMedia >= mediaCount {
+				break
+			}
+		}
+	}
+	return selected
+}
+
+func joinedMessageText(msgs []*tg.Message) string {
+	parts := make([]string, 0, len(msgs))
+	for _, msg := range msgs {
+		if msg == nil {
+			continue
+		}
+		text := strings.TrimSpace(msg.GetMessage())
+		if text != "" {
+			parts = append(parts, text)
+		}
+	}
+	return strings.Join(parts, "\n\n")
+}
+
+func manualLinkedGroupID(chatID int64, msgID, count int) int64 {
+	if chatID < 0 {
+		chatID = -chatID
+	}
+	return chatID*1_000_000_000 + int64(msgID*100+count)
 }
 
 func getLinkedMessageGroup(ctx *ext.Context, chatID int64, msg *tg.Message, isGroup bool, groupID int64) ([]*tg.Message, int64, error) {

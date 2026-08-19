@@ -65,9 +65,17 @@ func (f *tgFile) Refresh(ctx *ext.Context) error {
 	if err != nil {
 		return err
 	}
+	oldCaption := f.message.GetMessage()
+	oldGroupID, oldGrouped := f.message.GetGroupedID()
 	file, err := FromMedia(freshMsg.Media, f.dler)
 	if err != nil {
 		return err
+	}
+	if oldCaption != "" {
+		freshMsg.Message = oldCaption
+	}
+	if oldGrouped && oldGroupID != 0 {
+		freshMsg.GroupedID = oldGroupID
 	}
 	f.location = file.Location()
 	f.size = file.Size()
@@ -160,11 +168,11 @@ func FromMediaMessage(media tg.MessageMediaClass, client downloader.Client, msg 
 	if err != nil {
 		return nil, err
 	}
-	return &tgFile{
-		location: file.Location(),
-		dler:     file.Dler(),
-		size:     file.Size(),
-		name:     file.Name(),
-		message:  msg,
-	}, nil
+	if messageFile, ok := file.(*tgFile); ok {
+		if messageFile.message == nil {
+			messageFile.message = msg
+		}
+		return messageFile, nil
+	}
+	return NewTGFile(file.Location(), file.Dler(), file.Size(), file.Name(), WithMessage(msg)).(TGFileMessage), nil
 }

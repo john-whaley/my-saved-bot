@@ -12,6 +12,7 @@ import (
 	"github.com/krau/SaveAny-Bot/common/tdler"
 	"github.com/krau/SaveAny-Bot/common/utils/fsutil"
 	"github.com/krau/SaveAny-Bot/common/utils/ioutil"
+	"github.com/krau/SaveAny-Bot/common/utils/tgutil"
 	"github.com/krau/SaveAny-Bot/config"
 	"github.com/krau/SaveAny-Bot/pkg/enums/ctxkey"
 	"github.com/krau/SaveAny-Bot/pkg/storagetypes"
@@ -186,6 +187,9 @@ func (t *Task) unmarkProcessing(id string) {
 func (t *Task) downloadElement(ctx context.Context, elem *TaskElement) error {
 	logger := log.FromContext(ctx).WithPrefix(fmt.Sprintf("file[%s]", elem.File.Name()))
 	logger.Info("Starting file download")
+	if err := refreshFileReference(ctx, elem.File); err != nil {
+		logger.Warnf("Failed to refresh file reference: %v", err)
+	}
 	localFile, err := fsutil.CreateFile(elem.localPath)
 	if err != nil {
 		return fmt.Errorf("failed to create local file: %w", err)
@@ -239,6 +243,9 @@ func (t *Task) processElement(ctx context.Context, elem TaskElement) error {
 		errg.Go(func() error {
 			defer pw.Close()
 			logger.Info("Starting file download in stream mode")
+			if err := refreshFileReference(ctx, elem.File); err != nil {
+				logger.Warnf("Failed to refresh file reference: %v", err)
+			}
 			_, err := tdler.NewDownloader(elem.File).Stream(uploadCtx, wr)
 			if err != nil {
 				logger.Errorf("Failed to download file: %v", err)
@@ -253,6 +260,9 @@ func (t *Task) processElement(ctx context.Context, elem TaskElement) error {
 		return nil
 	}
 	logger.Info("Starting file download")
+	if err := refreshFileReference(ctx, elem.File); err != nil {
+		logger.Warnf("Failed to refresh file reference: %v", err)
+	}
 	localFile, err := fsutil.CreateFile(elem.localPath)
 	if err != nil {
 		return fmt.Errorf("failed to create local file: %w", err)
@@ -303,4 +313,16 @@ func (t *Task) processElement(ctx context.Context, elem TaskElement) error {
 		return nil
 	}, retry.Context(vctx), retry.RetryTimes(uint(config.C().Retry)))
 	return err
+}
+
+func refreshFileReference(ctx context.Context, file tfile.TGFile) error {
+	messageFile, ok := file.(tfile.TGFileMessage)
+	if !ok {
+		return nil
+	}
+	tctx := tgutil.ExtFromContext(ctx)
+	if tctx == nil {
+		return nil
+	}
+	return messageFile.Refresh(tctx)
 }

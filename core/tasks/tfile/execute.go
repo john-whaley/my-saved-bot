@@ -10,6 +10,7 @@ import (
 	"github.com/duke-git/lancet/v2/retry"
 	"github.com/krau/SaveAny-Bot/common/tdler"
 	"github.com/krau/SaveAny-Bot/common/utils/fsutil"
+	"github.com/krau/SaveAny-Bot/common/utils/tgutil"
 	"github.com/krau/SaveAny-Bot/config"
 	"github.com/krau/SaveAny-Bot/pkg/enums/ctxkey"
 	"github.com/krau/SaveAny-Bot/pkg/storagetypes"
@@ -26,6 +27,9 @@ func (t *Task) Execute(ctx context.Context) error {
 	}
 
 	logger.Info("Starting file download")
+	if err := refreshFileReference(ctx, t.File); err != nil {
+		logger.Warnf("Failed to refresh file reference: %v", err)
+	}
 	localFile, err := fsutil.CreateFile(t.localPath)
 	if err != nil {
 		return fmt.Errorf("failed to create local file: %w", err)
@@ -85,4 +89,16 @@ func sourceCaption(file tfilepkg.TGFile) (string, bool) {
 		return "", false
 	}
 	return messageFile.Message().GetMessage(), true
+}
+
+func refreshFileReference(ctx context.Context, file tfilepkg.TGFile) error {
+	messageFile, ok := file.(tfilepkg.TGFileMessage)
+	if !ok {
+		return nil
+	}
+	tctx := tgutil.ExtFromContext(ctx)
+	if tctx == nil {
+		return nil
+	}
+	return messageFile.Refresh(tctx)
 }

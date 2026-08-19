@@ -290,6 +290,11 @@ func getMessageByID(ctx *ext.Context, chatID int64, msgID int) (*tg.Message, err
 	if msg, ok := cache.Get[*tg.Message](key); ok {
 		return msg, nil
 	}
+	return fetchMessageByID(ctx, chatID, msgID)
+}
+
+func fetchMessageByID(ctx *ext.Context, chatID int64, msgID int) (*tg.Message, error) {
+	key := fmt.Sprintf("tgmsg:%d:%d:%d", ctx.Self.ID, chatID, msgID)
 	msgs, err := ctx.GetMessages(chatID, []tg.InputMessageClass{
 		&tg.InputMessageID{ID: msgID},
 	})
@@ -333,6 +338,30 @@ func GetMessageByID(ctx *ext.Context, chatID int64, msgID int) (*tg.Message, err
 	}
 
 	return nil, fmt.Errorf("failed to get message by ID: chatID=%d, msgID=%d", chatID, msgID)
+}
+
+func GetFreshMessageByID(ctx *ext.Context, chatID int64, msgID int) (*tg.Message, error) {
+	if msg, err := fetchMessageByID(ctx, chatID, msgID); err == nil {
+		return msg, nil
+	}
+	in := constant.TDLibPeerID(chatID)
+	plain := in.ToPlain()
+	var channel constant.TDLibPeerID
+	channel.Channel(plain)
+	if msg, err := fetchMessageByID(ctx, int64(channel), msgID); err == nil {
+		return msg, nil
+	}
+	var chat constant.TDLibPeerID
+	chat.Chat(plain)
+	if msg, err := fetchMessageByID(ctx, int64(chat), msgID); err == nil {
+		return msg, nil
+	}
+	var userID constant.TDLibPeerID
+	userID.User(plain)
+	if msg, err := fetchMessageByID(ctx, int64(userID), msgID); err == nil {
+		return msg, nil
+	}
+	return nil, fmt.Errorf("failed to get fresh message by ID: chatID=%d, msgID=%d", chatID, msgID)
 }
 
 func GetGroupedMessages(ctx *ext.Context, chatID int64, msg *tg.Message) ([]*tg.Message, error) {

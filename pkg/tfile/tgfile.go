@@ -5,8 +5,10 @@ import (
 	"fmt"
 
 	"github.com/celestix/gotgproto/functions"
+	"github.com/celestix/gotgproto/ext"
 	"github.com/gotd/td/telegram/downloader"
 	"github.com/gotd/td/tg"
+	"github.com/krau/SaveAny-Bot/common/utils/tgutil"
 )
 
 type TGFile interface {
@@ -20,6 +22,7 @@ type TGFile interface {
 type TGFileMessage interface {
 	TGFile
 	Message() *tg.Message
+	Refresh(ctx *ext.Context) error
 }
 
 type tgFile struct {
@@ -48,6 +51,28 @@ func (f *tgFile) Name() string {
 
 func (f *tgFile) Message() *tg.Message {
 	return f.message
+}
+
+func (f *tgFile) Refresh(ctx *ext.Context) error {
+	if ctx == nil || f.message == nil {
+		return nil
+	}
+	chatID := tgutil.ChatIdFromPeer(f.message.GetPeerID())
+	if chatID == 0 || f.message.GetID() == 0 {
+		return nil
+	}
+	freshMsg, err := tgutil.GetFreshMessageByID(ctx, chatID, f.message.GetID())
+	if err != nil {
+		return err
+	}
+	file, err := FromMedia(freshMsg.Media, f.dler)
+	if err != nil {
+		return err
+	}
+	f.location = file.Location()
+	f.size = file.Size()
+	f.message = freshMsg
+	return nil
 }
 
 func (f *tgFile) Dler() downloader.Client {

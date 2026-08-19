@@ -23,6 +23,9 @@ func executeStream(ctx context.Context, task *Task) error {
 	errg.Go(func() error {
 		defer pw.Close()
 		logger.Info("Starting file download in stream mode")
+		if err := refreshFileReference(ctx, task.File); err != nil {
+			logger.Warnf("Failed to refresh file reference: %v", err)
+		}
 		_, err := tdler.NewDownloader(task.File).Stream(uploadCtx, wr)
 		if err != nil {
 			logger.Errorf("Failed to download file: %v", err)
